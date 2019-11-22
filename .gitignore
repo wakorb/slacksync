@@ -2,11 +2,3 @@
 /public
 /dist
 .env
-
-## IDE FILES
-.idea/
-.DS_Store
-*.tgz
-npm-debug.log*
-/.changelog
-.npm/
