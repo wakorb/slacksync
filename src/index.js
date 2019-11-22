@@ -13,8 +13,10 @@ const slackEvents = slackEventsApi.createEventAdapter(
   }
 );
 
+// Initialize slack client
 const slackClient = new WebClient(process.env.SLACK_AUTH_TOKEN);
 
+// Initialize database connection
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true });
 
 mongoose.set('useCreateIndex', true);
@@ -32,14 +34,16 @@ const User = mongoose.model('User', mongoose.Schema(userSchema));
 // Initialize an Express application
 const app = express();
 
-// *** Plug the event adapter into the express app as middleware ***
+// setup middlewares
 app.use('/slack/events', slackEvents.expressMiddleware());
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  next();
-});
+// this was for local testing purposes
+// app.use((req, res, next) => {
+//   res.header('Access-Control-Allow-Origin', '*');
+//   next();
+// });
 
+// endpoint for client to recieve users
 app.get('/users', (req, res) => {
   User.find((err, docs) => res.send(docs));
 });
