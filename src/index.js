@@ -35,6 +35,11 @@ const app = express();
 // *** Plug the event adapter into the express app as middleware ***
 app.use('/slack/events', slackEvents.expressMiddleware());
 
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  next();
+});
+
 app.get('/users', (req, res) => {
   User.find((err, docs) => res.send(docs));
 });
