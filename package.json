@@ -20,6 +20,7 @@
     "eslint-plugin-import": "^2.18.2",
     "express": "^4.17.1",
     "mongoose": "^5.7.12",
+    "ngrok": "^3.2.5",
     "request": "^2.88.0"
   }
 }

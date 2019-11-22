@@ -4,7 +4,7 @@ const { WebClient } = require('@slack/web-api');
 const http = require('http');
 const express = require('express');
 const mongoose = require('mongoose');
-const userSchema = require('../schema/userSchema');
+const { userSchema } = require('../schema/userSchema');
 
 // *** Initialize event adapter using signing secret from environment variables ***
 const slackEvents = slackEventsApi.createEventAdapter(
@@ -17,6 +17,8 @@ const slackEvents = slackEventsApi.createEventAdapter(
 const slackClient = new WebClient(process.env.SLACK_AUTH_TOKEN);
 
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true });
+
+mongoose.set('useCreateIndex', true);
 
 const db = mongoose.connection;
 
@@ -34,35 +36,65 @@ app.use('/slack/events', slackEvents.expressMiddleware());
 
 const User = mongoose.model('User', mongoose.Schema(userSchema));
 
-// *** Greeting any user that says "hi" ***
-slackEvents.on('user_change', (event) => {
-  console.log('user_change received');
-  console.log(event);
-});
+const createNewUser = (user) => {
+  const userDoc = new User(user);
 
-slackEvents.on('team_join', (event) => {
+  userDoc.save((error) => {
+    if (error) {
+      console.log(`error saving user: ${user.name} - ${error}`);
+    }
+  });
+};
+
+const updateUser = (user) => {
+  User.findOne({ id: user.id }, (err, res) => {
+    if (err) {
+      console.log(`error finding user ${err}`);
+    } else if (res) {
+      // update it if it exists
+      res.updateOne(user, (updateErr) => {
+        if (updateErr) {
+          console.log(`error updating existing user - ${updateErr}`);
+        }
+      });
+    } else {
+      // create a new one if it doesn't
+      createNewUser(user);
+    }
+  });
+};
+
+const getExistingUsers = async () => {
+  const users = await slackClient.users.list();
+
+  users.members.forEach((user) => {
+    updateUser(user);
+  });
+};
+
+// Handle team_join event
+slackEvents.on('team_join', (user) => {
   console.log('team_join received');
-  console.log(event);
+  createNewUser(user);
 });
 
+// Handle user_change event
+slackEvents.on('user_change', (user) => {
+  console.log('user_change received');
+  updateUser(user);
+});
+
+// Handle url_verification event
 slackEvents.on('url_verification', (event) => {
   console.log(event);
 });
 
-// *** Handle errors ***
+// Handle error event
 slackEvents.on('error', (error) => {
   console.log(
     `An error occurred while handling a Slack event: ${error.message}`
   );
 });
-
-const getExistingUsers = async () => {
-  const existingUsers = await slackClient.users.list();
-
-  User.insertMany(existingUsers, (err) => {
-    console.log('error saving existing users');
-  });
-};
 
 // Start the express application
 const port = process.env.PORT || 3000;
