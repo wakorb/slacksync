@@ -1,7 +1,6 @@
 require('dotenv').config();
 const slackEventsApi = require('@slack/events-api');
 const { WebClient } = require('@slack/web-api');
-const http = require('http');
 const express = require('express');
 const mongoose = require('mongoose');
 const { userSchema } = require('../schema/userSchema');
@@ -28,13 +27,17 @@ db.once('open', () => {
   console.log('connected to database');
 });
 
+const User = mongoose.model('User', mongoose.Schema(userSchema));
+
 // Initialize an Express application
 const app = express();
 
 // *** Plug the event adapter into the express app as middleware ***
 app.use('/slack/events', slackEvents.expressMiddleware());
 
-const User = mongoose.model('User', mongoose.Schema(userSchema));
+app.get('/users', (req, res) => {
+  User.find((err, docs) => res.send(docs));
+});
 
 const createNewUser = (user) => {
   const userDoc = new User(user);
@@ -98,7 +101,7 @@ slackEvents.on('error', (error) => {
 
 // Start the express application
 const port = process.env.PORT || 3000;
-http.createServer(app).listen(port, () => {
+app.listen(port, () => {
   console.log(`server listening on port ${port}`);
 
   getExistingUsers();
