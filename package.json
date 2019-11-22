@@ -9,21 +9,17 @@
   "author": "joshuabrokaw@gmail.com",
   "license": "ISC",
   "dependencies": {
-    "@aoberoi/passport-slack": "^1.0.5",
     "@slack/events-api": "^2.3.0",
     "@slack/web-api": "^5.5.0",
     "babel-cli": "^6.26.0",
     "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.7.0",
-    "body-parser": "^1.19.0",
     "dotenv": "^8.2.0",
     "eslint": "^6.6.0",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.18.2",
     "express": "^4.17.1",
     "mongoose": "^5.7.12",
-    "ngrok": "^3.2.5",
-    "passport": "^0.4.0",
     "request": "^2.88.0"
   }
 }
