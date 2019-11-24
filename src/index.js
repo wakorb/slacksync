@@ -26,7 +26,7 @@ const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 
 db.once('open', () => {
-  console.log('connected to database');
+  // console.log('connected to database');
 });
 
 const User = mongoose.model('User', mongoose.Schema(userSchema));
@@ -40,17 +40,12 @@ const clients = {};
 // setup middlewares
 app.use('/slack/events', slackEvents.expressMiddleware());
 
-// this was for local testing purposes
-// app.use((req, res, next) => {
-//
-//   next();
-// });
-
 // endpoint for client to recieve users
 app.get('/users', (req, res) => {
   User.find((err, docs) => {
     req.socket.setTimeout(1000000);
 
+    // would never set this for production use, just for testing
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Content-Type', 'text/event-stream');
     res.header('Cache-Control', 'no-cache');
@@ -73,7 +68,7 @@ const createNewUser = (user) => {
 
   userDoc.save((error) => {
     if (error) {
-      console.log(`error saving user: ${user.name} - ${error}`);
+      // console.log(`error saving user: ${user.name} - ${error}`);
     }
   });
 };
@@ -81,7 +76,7 @@ const createNewUser = (user) => {
 const updateUser = (user) => {
   User.findOne({ id: user.id }, (err, doc) => {
     if (err) {
-      console.log(`error finding user ${err}`);
+      // console.log(`error finding user ${err}`);
     } else if (doc) {
       // update it if it exists
       doc.overwrite(user);
@@ -106,33 +101,33 @@ const getExistingUsers = async () => {
 };
 
 // Handle team_join event
-slackEvents.on('team_join', (user) => {
-  console.log('team_join received');
-  createNewUser(user);
+slackEvents.on('team_join', (event) => {
+  // console.log('team_join received');
+  createNewUser(event.user);
 });
 
 // Handle user_change event
-slackEvents.on('user_change', (user) => {
-  console.log('user_change received');
-  updateUser(user);
+slackEvents.on('user_change', (event) => {
+  // console.log('user_change received');
+  updateUser(event.user);
 });
 
 // Handle url_verification event
-slackEvents.on('url_verification', (event) => {
-  console.log(event);
+slackEvents.on('url_verification', () => {
+  // console.log(event);
 });
 
 // Handle error event
-slackEvents.on('error', (error) => {
-  console.log(
-    `An error occurred while handling a Slack event: ${error.message}`
-  );
+slackEvents.on('error', () => {
+  // console.log(
+  //   `An error occurred while handling a Slack event: ${error.message}`
+  // );
 });
 
 // Start the express application
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`server listening on port ${port}`);
+  // console.log(`server listening on port ${port}`);
 
   getExistingUsers();
 });
