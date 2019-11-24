@@ -42,23 +42,22 @@ app.use('/slack/events', slackEvents.expressMiddleware());
 
 // this was for local testing purposes
 // app.use((req, res, next) => {
-//   res.header('Access-Control-Allow-Origin', '*');
+//
 //   next();
 // });
 
 // endpoint for client to recieve users
 app.get('/users', (req, res) => {
   User.find((err, docs) => {
-    req.socket.setTimeout(Number.MAX_VALUE);
+    req.socket.setTimeout(1000000);
 
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream', // <- Important headers
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-    });
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Content-Type', 'text/event-stream');
+    res.header('Cache-Control', 'no-cache');
 
-    res.write(docs);
+    const payload = `data: ${JSON.stringify(docs)}\n\n`;
+
+    res.write(payload);
 
     (() => {
       clients[clientId] = res; // <- Add this client to those we consider "attached"
