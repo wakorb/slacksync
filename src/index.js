@@ -79,16 +79,13 @@ const createNewUser = (user) => {
 };
 
 const updateUser = (user) => {
-  User.findOne({ id: user.id }, (err, res) => {
+  User.findOne({ id: user.id }, (err, doc) => {
     if (err) {
       console.log(`error finding user ${err}`);
-    } else if (res) {
+    } else if (doc) {
       // update it if it exists
-      res.updateOne(user, (updateErr) => {
-        if (updateErr) {
-          console.log(`error updating existing user - ${updateErr}`);
-        }
-      });
+      doc.overwrite(user);
+      doc.save();
     } else {
       // create a new one if it doesn't
       createNewUser(user);
