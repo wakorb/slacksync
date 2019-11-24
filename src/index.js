@@ -34,6 +34,9 @@ const User = mongoose.model('User', mongoose.Schema(userSchema));
 // Initialize an Express application
 const app = express();
 
+let clientId = 0;
+const clients = {};
+
 // setup middlewares
 app.use('/slack/events', slackEvents.expressMiddleware());
 
@@ -45,7 +48,24 @@ app.use((req, res, next) => {
 
 // endpoint for client to recieve users
 app.get('/users', (req, res) => {
-  User.find((err, docs) => res.send(docs));
+  User.find((err, docs) => {
+    req.socket.setTimeout(Number.MAX_VALUE);
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream', // <- Important headers
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+
+    res.write(docs);
+
+    (() => {
+      clients[clientId] = res; // <- Add this client to those we consider "attached"
+      req.on('close', () => {
+        delete clients[clientId];
+      }); // <- Remove this client when he disconnects
+    })((clientId += 1));
+  });
 });
 
 const createNewUser = (user) => {
@@ -73,6 +93,10 @@ const updateUser = (user) => {
       // create a new one if it doesn't
       createNewUser(user);
     }
+
+    Object.values(clients).forEach((client) => {
+      client.write(`data: ${user}\n\n`);
+    });
   });
 };
 
