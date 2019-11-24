@@ -38,10 +38,10 @@ const app = express();
 app.use('/slack/events', slackEvents.expressMiddleware());
 
 // this was for local testing purposes
-// app.use((req, res, next) => {
-//   res.header('Access-Control-Allow-Origin', '*');
-//   next();
-// });
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  next();
+});
 
 // endpoint for client to recieve users
 app.get('/users', (req, res) => {
