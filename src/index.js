@@ -92,7 +92,7 @@ const updateUser = (user) => {
     }
 
     Object.values(clients).forEach((client) => {
-      client.write(`data: ${user}\n\n`);
+      client.write(`data: ${JSON.stringify([user])}\n\n`);
     });
   });
 };
