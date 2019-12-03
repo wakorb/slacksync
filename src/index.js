@@ -3,7 +3,9 @@ const slackEventsApi = require('@slack/events-api');
 const { WebClient } = require('@slack/web-api');
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const { userSchema } = require('../schema/userSchema');
+const { channelSchema } = require('../schema/channelSchema');
 
 // *** Initialize event adapter using signing secret from environment variables ***
 const slackEvents = slackEventsApi.createEventAdapter(
@@ -31,35 +33,26 @@ db.once('open', () => {
 
 const User = mongoose.model('User', mongoose.Schema(userSchema));
 
+const Channel = mongoose.model('Channel', mongoose.Schema(channelSchema));
+
 // Initialize an Express application
 const app = express();
 
-let clientId = 0;
-const clients = {};
-
 // setup middlewares
 app.use('/slack/events', slackEvents.expressMiddleware());
+app.use(cors());
 
 // endpoint for client to recieve users
 app.get('/users', (req, res) => {
-  User.find((err, docs) => {
-    req.socket.setTimeout(1000000);
+  User.find((err, users) => {
+    res.json(users);
+  });
+});
 
-    // would never set this for production use, just for testing
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Content-Type', 'text/event-stream');
-    res.header('Cache-Control', 'no-cache');
-
-    const payload = `data: ${JSON.stringify(docs)}\n\n`;
-
-    res.write(payload);
-
-    (() => {
-      clients[clientId] = res; // <- Add this client to those we consider "attached"
-      req.on('close', () => {
-        delete clients[clientId];
-      }); // <- Remove this client when he disconnects
-    })((clientId += 1));
+// endpoint for client to recieve users
+app.get('/channels', (req, res) => {
+  Channel.find((err, channels) => {
+    res.json(channels);
   });
 });
 
@@ -85,10 +78,48 @@ const updateUser = (user) => {
       // create a new one if it doesn't
       createNewUser(user);
     }
+  });
+};
 
-    Object.values(clients).forEach((client) => {
-      client.write(`data: ${JSON.stringify([user])}\n\n`);
-    });
+const createNewChannel = (channelId, userId) => {
+  const users = {};
+  users[userId] = true;
+
+  const channelDoc = new Channel({ id: channelId, users });
+
+  channelDoc.save((err) => {
+    if (err) {
+      // log error
+    }
+  });
+};
+
+const recordUserJoinedChannel = (channelId, userId) => {
+  Channel.findOne({ id: channelId }, (err, doc) => {
+    if (err) {
+      // console.log(`error finding channel ${err});
+    } else if (doc) {
+      if (!doc.users.get(userId)) {
+        doc.users.set(userId, true);
+        doc.save();
+      }
+    } else {
+      createNewChannel(channelId, userId);
+    }
+  });
+};
+
+const recordUserLeftChannel = (channelId, userId) => {
+  Channel.findOne({ id: channelId }, (err, doc) => {
+    if (err) {
+      // console.log(`error finding channel ${err});
+    } else if (doc) {
+      if (doc.users.get(userId)) {
+        doc.users.delete(userId);
+        doc.save();
+      }
+    }
+    // there shouldn't ever be an else for here, because we should always know about it
   });
 };
 
@@ -112,6 +143,18 @@ slackEvents.on('user_change', (event) => {
   updateUser(event.user);
 });
 
+slackEvents.on('member_joined_channel', (event) => {
+  console.log('member_joined_channel recieved');
+
+  recordUserJoinedChannel(event.channel, event.user);
+});
+
+slackEvents.on('member_left_channel', (event) => {
+  console.log('member_left_channel recieved');
+
+  recordUserLeftChannel(event.channel, event.user);
+});
+
 // Handle url_verification event
 slackEvents.on('url_verification', () => {
   // console.log(event);
@@ -127,7 +170,7 @@ slackEvents.on('error', () => {
 // Start the express application
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  // console.log(`server listening on port ${port}`);
+  console.log(`server listening on port ${port}`);
 
   getExistingUsers();
 });
